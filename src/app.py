@@ -8,6 +8,7 @@ for extracurricular activities at Mergington High School.
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from copy import deepcopy
 import os
 from pathlib import Path
 
@@ -19,8 +20,8 @@ current_dir = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=os.path.join(Path(__file__).parent,
           "static")), name="static")
 
-# In-memory activity database
-activities = {
+# Seed data for the in-memory activity database
+ACTIVITY_SEED_DATA = {
     "Chess Club": {
         "description": "Learn strategies and compete in chess tournaments",
         "schedule": "Fridays, 3:30 PM - 5:00 PM",
@@ -38,8 +39,51 @@ activities = {
         "schedule": "Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM",
         "max_participants": 30,
         "participants": ["john@mergington.edu", "olivia@mergington.edu"]
+    },
+    "Soccer Team": {
+        "description": "Competitive soccer training and interschool matches",
+        "schedule": "Tuesdays and Thursdays, 4:00 PM - 5:30 PM",
+        "max_participants": 22,
+        "participants": ["lucas@mergington.edu", "liam@mergington.edu"]
+    },
+    "Swimming Club": {
+        "description": "Swim training, technique improvement, and competitions",
+        "schedule": "Mondays and Wednesdays, 3:30 PM - 5:00 PM",
+        "max_participants": 15,
+        "participants": ["mia@mergington.edu", "noah@mergington.edu"]
+    },
+    "Art Club": {
+        "description": "Explore painting, drawing, and mixed media art techniques",
+        "schedule": "Wednesdays, 3:30 PM - 5:00 PM",
+        "max_participants": 15,
+        "participants": ["isabella@mergington.edu", "ava@mergington.edu"]
+    },
+    "Drama Club": {
+        "description": "Acting, stagecraft, and school theater productions",
+        "schedule": "Mondays and Wednesdays, 4:00 PM - 5:30 PM",
+        "max_participants": 20,
+        "participants": ["charlotte@mergington.edu", "amelia@mergington.edu"]
+    },
+    "Debate Team": {
+        "description": "Develop public speaking and argumentation skills through competitive debate",
+        "schedule": "Thursdays, 3:30 PM - 5:00 PM",
+        "max_participants": 16,
+        "participants": ["ethan@mergington.edu", "james@mergington.edu"]
+    },
+    "Math Olympiad": {
+        "description": "Advanced math problem-solving and competition preparation",
+        "schedule": "Tuesdays, 3:30 PM - 5:00 PM",
+        "max_participants": 15,
+        "participants": ["alexander@mergington.edu", "benjamin@mergington.edu"]
     }
 }
+
+
+def create_initial_activities():
+    return deepcopy(ACTIVITY_SEED_DATA)
+
+
+activities = create_initial_activities()
 
 
 @app.get("/")
@@ -62,6 +106,25 @@ def signup_for_activity(activity_name: str, email: str):
     # Get the specific activity
     activity = activities[activity_name]
 
+    # Check if already signed up
+    if email in activity["participants"]:
+        raise HTTPException(status_code=400, detail="Already signed up")
+
     # Add student
     activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
+
+
+@app.delete("/activities/{activity_name}/signup")
+def unregister_from_activity(activity_name: str, email: str):
+    """Remove a student from an activity"""
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    activity = activities[activity_name]
+
+    if email not in activity["participants"]:
+        raise HTTPException(status_code=404, detail="Participant not found")
+
+    activity["participants"].remove(email)
+    return {"message": f"Removed {email} from {activity_name}"}
